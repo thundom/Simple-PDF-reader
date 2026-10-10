@@ -1,29 +1,35 @@
-# 云盘开发者配置（普通用户无需填写 ID）
+# Google Drive developer setup
 
-本程序使用官方浏览器登录，不接收 Google 密码。普通用户界面不提供 Client ID 输入。以下步骤仅供项目维护者一次性注册应用；目前尚未完成注册，云盘功能等待后续启用。
+The public build deliberately omits a registered personal OAuth client. Ordinary users of a configured build click browser sign-in; they do not enter a developer client ID into the reader.
 
-维护者复制 `oauth-clients.example.json` 为 `oauth-clients.json`，填写Google 桌面应用身份，放在源码或 exe 同目录。真实配置默认被 Git 忽略，不提交密钥到公开仓库。应用身份决定备份所在的私人应用文件夹，后续版本必须保持一致。仅创建示例文件不会启用云盘，也不能使用其他软件的 Client ID。
+## Register a desktop application
 
-## Google Drive
+1. Create or select a project in Google Cloud Console.
+2. Enable the Google Drive API for that project.
+3. Configure the Google Auth Platform branding, audience, and data-access settings for your application.
+4. Register an OAuth client of type Desktop app and download its JSON configuration.
+5. While the application is in testing, add the accounts that will use it to the test-user list.
 
-1. 打开 https://console.cloud.google.com/ ，创建个人项目。
-2. 启用 Google Drive API。
-3. 配置 Google Auth Platform：应用名称 `Simple PDF reader`，选择适合个人账户的 External audience；测试阶段将自己的 Google 邮箱加入测试用户。
-4. 添加 scope `https://www.googleapis.com/auth/drive.appdata`。
-5. 创建 OAuth Client，类型必须是 **Desktop app（桌面应用）**。下载客户端 JSON 并妥善保存到另一安全位置。
-6. 在维护者的 `oauth-clients.json` 中填写 `Google Drive.client_id` 与 `Google Drive.client_secret`。Google 桌面客户端 secret 不是用户密码；发行方式应由维护者按官方桌面客户端政策决定。
-7. 用户点击“网页登录”，浏览器中选择自己的账户并授权；成功后显示云端书库。
+The reader uses the `https://www.googleapis.com/auth/drive.appdata` scope, PKCE, state validation, and a temporary local HTTP callback on `localhost`. It stores backups in the app's hidden Drive data folder. It does not request access to all existing Drive files.
 
-个人测试应用可能遇到未验证应用提示或测试模式令牌过期；按 Google 控制台当前政策配置自己的应用。发布给他人使用时，应由维护者配置合适的 OAuth 发布状态并按要求验证，而不是要求他人提供账户密码。
+## Configure a personal build
 
-Google `appDataFolder` 不显示在普通 Drive 文件列表中，程序的云端书库可查看和恢复。删除 OAuth 项目/更换 Client ID 可能导致原备份无法通过新应用访问。
+Use `oauth-clients.example.json` as the format reference. Place `oauth-clients.json` beside the source or executable. It contains a Google Drive entry with `client_id` and `client_secret` from your registered desktop client. Do not paste user access tokens, passwords, or refresh tokens into that file.
 
-官方资料：
-- https://developers.google.com/identity/protocols/oauth2/native-app
-- https://developers.google.com/workspace/drive/api/guides/appdata
+The configuration is ignored by Git and excluded from public source archives. The public EXE installer also excludes it by default. To build a personal installer that embeds the configuration, pass `/DIncludeGoogle` to the Inno Setup compiler. Keep that build separate from public release assets.
 
-## 重装恢复
+Desktop client configuration identifies the application; it is not a user's Drive login. Every account still has to authorize through Google's own web page. Access and refresh tokens are kept in the operating system credential store rather than inside the source or reading-progress backup.
 
-用户重新安装带相同应用身份的发行版 → 网页登录相同账户 → 刷新书库 → 继续阅读。文件、页码、布局、页内阅读位置一起下载。PDF 打开密码不会存云端，必须自己记住。
+## Use and restore
 
-退出登录仅删除本机令牌；要撤销授权，使用Google 账户的已授权应用页面。不要删除应用或云端数据，除非不再需要备份。
+Open Cloud library, sign in through the browser, and manually upload the current PDF with its reading position. On another computer, install a build configured with the same application identity, sign in to the same Google account, select the saved book, and resume reading.
+
+Save edits before uploading. Password-protected PDFs are uploaded as the original encrypted file bytes; the PDF password is not stored. Restored encrypted PDFs still need their password.
+
+Uploads are manual and limited to 200 MB. Restored PDFs are limited to 512 MB. Different PDF contents are treated as different versions, with no automatic conflict merging. Keep the OAuth application identity stable between versions.
+
+## Public distribution
+
+Before enabling Drive for general users, review the application's Google audience, publishing status, and any required platform verification in your Google console. A public installer without OAuth configuration still supports all local features. No real Google authorization or upload/download test has been completed for the personal build.
+
+OneDrive support is intentionally not included. The offline HTML edition has no cloud functionality.

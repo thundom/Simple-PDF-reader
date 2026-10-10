@@ -1,84 +1,99 @@
 # Simple PDF reader
 
-免费、本地优先的 Windows PDF 阅读器与基础编辑器，MIT 许可证。采用 Acrobat 风格的固定图标工具栏、悬停提示、右侧工具面板和弹出编辑工具栏。默认英文，支持简体中文与日文。无需订阅，无广告，无遥测。版本：0.4.0。
+A free, local-first Windows PDF reader and basic editor, released under the MIT license. Version 0.4.0. The interface defaults to English and supports Simplified Chinese and Japanese. No subscription, advertisements, or telemetry.
 
-## 功能
+## Downloads and installation
 
-- 文件、编辑、视图、签名、工具、窗口、帮助菜单栏；带图标的页面右键快捷菜单。
-- 默认主页列出最近阅读文件、页码、时间和位置，双击继续阅读。
-- 页码输入框、第一页/最后一页、Ctrl+G 跳页、四种阅读布局；左右面板可收起。
-- Ctrl+K 设置：界面语言、新文件默认布局、默认收起面板、自定义顶部快捷工具。
-- Ctrl+D 文档属性：描述、安全性与源文件权限、递归字体列表与嵌入情况、自定义 JSON 元数据、高级 PDF 结构信息；元数据修改需另存为。
+For interactive installation, use **Simple-PDF-reader-Setup.exe** from the latest successful GitHub Actions Windows build. It includes:
 
+- A welcome page and MIT license notice.
+- A destination folder picker, including a Browse button.
+- Start menu folder selection and an optional desktop shortcut.
+- An installation summary and progress page.
+- A completion page with a **Launch Simple PDF reader** checkbox.
+- English, Simplified Chinese, and Japanese installer languages.
 
-- 打开 PDF，包括正确密码解锁的加密 PDF；缩放、适应宽度、键盘翻页、页面跳转、文字查找。
-- 单页、双页、连续滚动、双页连续阅读；按视口加载页面图片，避免一次渲染整本书。
-- 点击“编辑工具”或在页面右键弹出编辑工具栏。
-- 页面旋转、删除、合并、按指定顺序提取；最多 10 次撤销。
-- 分割 PDF：每页一个文件、每 N 页一个文件、或自定义分段（如 `1-3;4-6;7,9`）。
-- 打印预览、纸张/方向/范围/份数、奇偶页/逆序、缩放/灰度/双面、多页合一、150/300/600 DPI；验证驱动支持的选项，可打开驱动属性。未做实体打印机实测。
-- 添加文字、高亮、便签注释、手写/图片签名、文本及复选框表单填写；导出 PNG 和 UTF-8 文本。
-- OCR 文字提取需免费 Tesseract 及语言包，不内置扫描仪采集。
-- AES-256 加密、输入正确密码后解密另存。普通“另存为”输出不加密。
-- PNG/JPEG/BMP/TIFF/WebP 转 PDF；UTF-8 TXT/Markdown 转 PDF（Markdown 作为纯文本）。
-- DOC/DOCX、XLS/XLSX、PPT/PPTX、ODF、RTF、HTML 转 PDF，需要安装免费 LibreOffice。
-- 每 5 秒及关闭时保存本地阅读页码、缩放、阅读布局与页内滚动位置；“最近阅读”继续阅读。
-- Google Drive：官方 OAuth + PKCE 登录，云端书库、一键上传当前 PDF 与进度，下载后回到原页码。
-- 程序内“关联 PDF”一键注册 PDF 打开方式；安装包自动注册默认应用候选。Windows 已有默认应用时仍需用户首次确认切换。
+Installation is for the current user. Choose a folder you can write to. The EXE wizard is the recommended interactive installer. The MSI package is a minimal Windows Installer package without this wizard.
 
-## 下载和安装
+If you installed an older MSI, close the reader and uninstall that MSI through Windows Settings before switching to the EXE installer. The MSI and EXE have separate uninstall records. Local reading progress is stored outside the installed program directory and is not deliberately deleted by either uninstaller.
 
-GitHub → Actions → 最近成功的 Windows build → `Simple-PDF-reader-Windows` artifact。
+Portable options are also available: unzip the portable folder or use the single-file portable EXE. Portable builds store progress in a `Data` folder beside the program and therefore need a writable directory.
 
-- **安装版**：`Simple-PDF-reader-Setup.exe`，自动安装、开始菜单快捷方式、PDF 打开方式注册。不需要管理员权限。
-- **MSI 安装版**：`Simple-PDF-reader-Setup.msi`，使用 Windows Installer 安装至当前用户目录，带快捷方式与 PDF 打开方式注册。
-- **绿色版**：`Simple-PDF-reader-Portable.zip`，解压后运行 `Simple PDF reader.exe`，无需安装。`portable.flag` 使阅读记录保存在程序旁的 `Data` 目录；请放在可写目录中。若移动程序目录，重新点击“关联 PDF”更新路径。
+The application and its installer are not code-signed.
 
-本版本尚未代码签名。
+## Reading and workspace
 
-## 从源码运行
+- Open ordinary and password-protected PDFs using the correct password.
+- Single page, two pages, continuous scrolling, and continuous two-page layouts.
+- Page number entry, first/last page, previous/next page, zoom, fit width, and text search.
+- File, Edit, View, Sign, Tools, Window, and Help menus; an icon context menu.
+- Original flat icons, hover tooltips, a fixed toolbar, and a popup editing toolbar.
+- Collapsible navigation and tool panels; customizable quick toolbar actions.
+- A home screen listing recent documents with their reading position, last-read time, and location. Double-click a file to resume.
+- Saved preferences for language, new-file layout, panel visibility, and toolbar actions.
+- Document properties: description, source security permissions, fonts and embedding, editable custom metadata, and advanced PDF structure information.
 
-需要官方 Python 3.12+（含 Tkinter）。Windows PowerShell：
+Progress saves every five seconds and when closing a document: page, zoom, layout, and position within a page. Missing recent files remain listed with a helpful message. Older records without timestamps display a dash.
+
+## Editing and conversion
+
+- Add text or images, highlight areas, add sticky comments, and place handwritten or imported image signatures.
+- Fill supported text and checkbox AcroForm fields.
+- Rotate, delete, merge, extract, and split pages; up to ten undo checkpoints.
+- Split into individual pages, groups of N pages, or custom ranges.
+- AES-256 encryption and password-authorized decryption to a new file. Normal Save a copy produces an unencrypted PDF.
+- Export page images or document text.
+- Convert images and UTF-8 text to PDF. Office and other supported document conversions require a separately installed LibreOffice.
+- OCR text extraction requires a separately installed Tesseract engine and language packs.
+
+Edits are kept in memory until saved. Metadata changes are also saved through Save a copy. Keep an original copy, especially for signed documents.
+
+## Printing
+
+Preview and driver-aware printing include paper size, orientation, page ranges, copies, odd/even pages, reverse order, grayscale, fit/actual/shrink sizing, duplex when supported, multiple pages per sheet, and 150/300/600 DPI raster output. The preview uses estimated margins; the actual printer's printable area governs output. Physical printing has not been tested.
+
+## Google Drive
+
+Configured personal builds use official browser sign-in with OAuth PKCE and a local callback. Users do not enter a client ID into the app. Manually upload the current PDF and reading position, or restore a saved book after reinstalling Windows. Backups use the app's hidden Drive data folder.
+
+Public builds omit the personal OAuth configuration. See `CLOUD_SETUP.md` for developer registration. OneDrive is not included.
+
+No PDFs are uploaded automatically. Uploads are limited to 200 MB; restored PDFs are limited to 512 MB. Different PDF bytes identify different versions. Save edits before uploading. Encrypted source bytes remain encrypted in backup, and PDF passwords are never saved. Drive tokens use the operating system credential store; another computer needs a new sign-in.
+
+Installer reading data: `%LOCALAPPDATA%\Simple PDF reader`. Portable reading data: `Data` beside the executable. Browser-based reading data uses the browser's local storage facilities.
+
+## Offline HTML edition
+
+`Simple-PDF-reader.html` is a self-contained offline reader containing PDF.js and pdf-lib. It has no Google functionality. It supports basic local overlays and page operations, with more limited editing than the desktop version. Password PDFs are readable but not editable in this edition. Printing opens the PDF in the browser's native PDF viewer. Clearing browser data removes its local library; download copies you want to keep. Browser end-to-end validation has not been completed.
+
+## Limits
+
+This is a basic editor, not a complete Acrobat replacement. It does not reflow or directly edit original paragraphs, provide certificate signatures, perform secure redaction, offer remote signing or collaboration servers, or implement professional prepress, ICC color management, booklet printing, or poster printing. Visual signatures are images. OCR does not include scanner acquisition or searchable PDF creation. Some rotated or crop-offset pages do not support click-based annotations. Two-page layouts do not treat the first page as a separate cover.
+
+The security properties page reports permissions declared by the source file; the app does not enforce every declared PDF permission. Changing a signed PDF can invalidate its signature. Office conversion can differ from the original application's layout.
+
+## Development
+
+Use Python 3.12 with Tkinter on Windows:
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
 .venv\Scripts\python app.py
-# 打开指定文件：
-.venv\Scripts\python app.py "C:\Documents\book.pdf"
+.venv\Scripts\python -m unittest discover -s tests -v
 ```
 
-## 私人云端书库
-
-普通用户只需点击 **网页登录**，通过官方 Google 页面授权，无需输入 Client ID 或云盘密码到本程序。程序需要维护者预先完成 OAuth 应用注册，并随发行版提供应用配置。**当前发行版尚未完成应用注册，云盘同步暂不可使用，保留后续接入接口。** 参见 [开发者配置说明](CLOUD_SETUP.md)。
-
-维护者完成注册后：云端书库 → 网页登录 → 上传当前书籍与进度。以后在其他电脑或重装系统后，使用同一个发行版应用身份和同一个云盘账户，登录 → 选择书籍 → 继续阅读。Google 备份位于应用隐藏数据文件夹。
-
-同步采用手动一键上传，不会在后台自动上传私人文件。多设备以最后一次上传为准；不同内容的 PDF 视为不同版本，暂不合并冲突。修改文件后请先另存，再上传。加密 PDF 上传原始加密字节，不保存 PDF 密码；云端恢复后仍需输入密码。阅读进度和文件名没有额外加密。单次上传上限 200 MB，下载 PDF 解压上限 512 MB；云盘自身容量限制仍然适用。
-
-安装版阅读记录保存在 `%LOCALAPPDATA%\Simple PDF reader\library.json`，绿色版保存在程序旁 `Data` 目录。云盘令牌存于系统凭据库，不随绿色版目录迁移；换电脑或重装需要重新网页登录。维护者需保持 OAuth 应用身份稳定，不能在更新版本时随意更换 Client ID。
-
-## 当前边界
-
-这是基础编辑器，不是 Acrobat 全功能替代品。添加文字是叠加内容，不能直接重排或修改原始段落；不含内置 OCR 引擎、证书数字签名、真正的内容涂黑删除、完整交互表单编辑。高亮是注释，不是涂黑。旋转或裁剪偏移页面暂不支持点击标记。扫描件查找需要 OCR。Office 转换不保证复杂文档与原应用排版完全一致。打印采用 150/300/600 DPI 栅格输出；没有专业印前、书册/海报、ICC 色彩管理。远程签署/协作入口仅说明本地版限制，未实现协作服务器。双页模式默认为第 1、2 页并列，不设独立封面。
-
-PDF 编辑可能使已有数字签名失效。保留原始文件；默认保存建议名称带 `-edited`。
-
-## 开发验证
+Build the desktop program, collect dependency notices, and compile the wizard using Inno Setup 6.5 or newer:
 
 ```powershell
-python -m unittest discover -s tests -v
 python -m pip install pyinstaller
 python -m PyInstaller --noconfirm --windowed --name "Simple PDF reader" --collect-all pypdfium2 --collect-all reportlab --collect-all keyring --collect-all jaraco app.py
 python collect_licenses.py
+& "C:/Program Files (x86)/Inno Setup 6/ISCC.exe" installer.iss
 ```
 
-测试覆盖密码错误拒绝、AES 加密/解密回读、页面编辑、撤销、合并提取、格式转换、PDFium 渲染、重装场景备份恢复以及云盘上传请求结构。真实云盘端到端验证需要用户配置 OAuth 应用并授权，初始交付未冒充通过真实账户测试。
+The public wizard excludes `oauth-clients.json` even if it is present in the build folder. An explicitly configured personal installer can be built with `/DIncludeGoogle`; do not publish that build. `SourceDir`, `OutputFolder`, and `OutputName` compiler defines allow alternate build locations.
 
-## 许可证
+## License
 
-本项目代码采用 [MIT](LICENSE)。第三方依赖保留各自许可证，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。不使用 Adobe 商标、图标或代码。应用本身免费；云盘超出免费容量时，平台可能收取扩容费用。
-
-## 单文件版本
-
-单文件绿色 EXE 运行后在旁边生成 Data 目录；Google 凭据库仍在 Windows。HTML 文件内嵌 PDF.js 与 pdf-lib，无网络依赖或云盘功能。HTML 只能阅读密码 PDF，不能编辑加密文件；编辑以本地叠加为主，打印依赖浏览器原生 PDF 控件。浏览器数据清理会删除阅读库，请下载 PDF 副本。详见 VERSION_NOTES.md。
+Project code is MIT, copyright 2026 thundom. Dependencies retain their own licenses; see `THIRD_PARTY_NOTICES.md` and the bundled dependency notices. Original icons and code are used; Adobe trademarks and assets are not included. The installer is built with Inno Setup, retaining its upstream notices.

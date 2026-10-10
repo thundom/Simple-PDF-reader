@@ -1,13 +1,13 @@
-# Simple PDF reader 0.4.0
+# Version 0.4.0 — Interactive installer update
 
-新增桌面菜单栏、原创扁平图标、右键快捷菜单、默认主页最近文件、分页跳转、可收起左右工具面板、可定制快捷工具栏、持久化设置，以及描述/安全性/字体/自定义/高级属性页。默认英文，支持中文和日文。
+The desktop application is unchanged from v0.4.0. The recommended installer is now an interactive EXE wizard with destination folder selection, start menu options, an optional desktop shortcut, installation progress, and a completion-page checkbox to launch the reader.
 
-最近文件保存上次阅读时间、页码、布局、缩放和滚动位置；旧记录没有时间时显示 —。缺失文件保留记录并给出提示。
+The destination page is always visible, including updates. The launch action runs only when selected on the completion page and is skipped during silent installation. Installer languages are English, Simplified Chinese, and Japanese.
 
-属性中的权限来自原 PDF，不表示程序强制执行所有源权限。普通保存输出未加密副本；重新设密码请使用加密功能。字体列表包含页面和嵌套 Form XObject 字体。自定义元数据为字符串 JSON 对象。
+The public installer explicitly excludes the personal Google OAuth configuration and portable reading data. A configured personal build is produced separately. Public GitHub documentation, commit messages, and release descriptions are in English.
 
-菜单只连接实际本地功能，不包含 Acrobat 的远程签署、云端协作或专业印前功能。HTML 版本保持 0.3，不增加 Google 功能。
+The MSI remains a minimal package and does not provide this wizard. Before switching from an older MSI to the EXE installer, close the reader and uninstall the MSI through Windows Settings. Neither uninstaller deliberately deletes the reading-state directory.
 
-安装前建议退出旧版并在 Windows 已安装应用中卸载旧版，再安装新版；本次未实际执行 MSI 安装或升级。卸载程序不会主动删除 LocalAppData 中的阅读记录。
+Desktop verification already completed: twelve PDF, backup-protocol, and printing-geometry tests; source UI checks in English, Chinese, and Japanese; menus, home library, navigation, panel visibility, preferences, property tabs, custom metadata round-trip, and encrypted source permission inspection. The compiled v0.4 desktop executable starts and responds.
 
-验证：12 项 PDF/云盘协议/打印几何测试通过；桌面源程序英中日菜单、主页、跳页、收起面板、设置和全部属性页运行检查通过；自定义元数据保存重读、加密源权限读取通过。实体打印及 Google 授权仍未实测。
+Real Google authorization, physical printing, and HTML browser end-to-end validation remain untested. See README.md for functional limits.
