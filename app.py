@@ -112,7 +112,7 @@ class App(tk.Tk):
         self.canvas.bind('<Button-3>', lambda e: self.guard(lambda: self.edit_toolbar(e)))
         self.canvas.bind('<Configure>', self.resized)
         self.canvas.create_text(340, 230, text=tr('打开 PDF 开始阅读\n\n支持密码文件、页面编辑与本地转换'), font=('Segoe UI', 18), fill='#56677e', justify='center')
-        self.status = tk.StringVar(value='就绪 · 文件不会上传到服务器')
+        self.status = tk.StringVar(value=tr('就绪 · 文件不会上传到服务器'))
         tk.Label(self, textvariable=self.status, anchor='w', bg='#f6f7f9', fg='#526176', padx=14, pady=8).pack(fill='x')
 
     def get_icon(self, key):

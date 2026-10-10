@@ -21,7 +21,7 @@ def show(app):
     printer=tk.StringVar(value=available[0]); paper=tk.StringVar(value='A4'); orientation=tk.IntVar(value=1)
     scaling=tk.StringVar(value='fit'); duplex=tk.IntVar(value=1); mode=tk.StringVar(value='all'); filtering=tk.StringVar(value='all')
     gray=tk.BooleanVar(); reverse=tk.BooleanVar(); nup=tk.StringVar(value='1'); count=tk.StringVar(value='1'); page_text=tk.StringVar(value=str(app.page+1)); dpi=tk.StringVar(value='300')
-    selected_driver=[None]; preview_index=[0]; preview_image=[None]; cancelled=[False]; busy=[False]
+    selected_driver=[None]; driver_choice=[None]; preview_index=[0]; preview_image=[None]; cancelled=[False]; busy=[False]
     def label(text): ttk.Label(settings,text=tr(text),font=('Segoe UI',10,'bold')).pack(anchor='w',pady=(10,4))
     def combo(variable,values):
         item=ttk.Combobox(settings,textvariable=variable,values=values,state='readonly'); item.pack(fill='x'); item.bind('<<ComboboxSelected>>',lambda e:update()); return item
@@ -88,15 +88,19 @@ def show(app):
             dm=DEVMODE.from_buffer(value); selected_driver[0]=value
             orientation.set(dm.orientation); gray.set(dm.color==1); duplex.set(dm.duplex)
             duplex_display.set(next((k for k,v in duplex_values.items() if v==dm.duplex),tr('单面')))
-            for name,item in PAPERS.items():
-                if item[0]==dm.paper: paper.set(name); break
+            supported=next((name for name,item in PAPERS.items() if item[0]==dm.paper),None)
+            if not supported:
+                selected_driver[0]=None
+                raise ValueError('Select A4, Letter, A3, A5 or Legal in driver properties.')
+            paper.set(supported)
+            driver_choice[0]=(printer.get(),options())
             update()
     def submit():
         result=indices(); copies=int(count.get())
         if not 1<=copies<=99: raise ValueError(tr('份数必须在 1 到 99 之间'))
         opts=options()
         # Revalidate selected values with the driver; unsupported duplex/paper is an error.
-        driver=driver_settings(printer.get(),opts)
+        driver=selected_driver[0] if driver_choice[0]==(printer.get(),opts) else driver_settings(printer.get(),opts)
         busy[0]=True; cancelled[0]=False; start.configure(state='disabled')
         def progress(page,copy): caption.set(tr('打印：第 {0} 页，副本 {1}/{2}').format(page+1,copy+1,copies)); win.update()
         try:
