@@ -16,11 +16,21 @@ jobs:
       - name: Include docs and dependency license metadata
         shell: pwsh
         run: |
-          Copy-Item LICENSE, README.md, CLOUD_SETUP.md, THIRD_PARTY_NOTICES.md 'dist/Simple PDF reader/'
+          Copy-Item LICENSE, README.md, CLOUD_SETUP.md, THIRD_PARTY_NOTICES.md, VERSION_NOTES.md 'dist/Simple PDF reader/'
           python collect_licenses.py
       - name: Compile installer
         shell: pwsh
         run: '& "C:/Program Files (x86)/Inno Setup 6/ISCC.exe" installer.iss'
+      - name: Build MSI
+        run: python build_msi.py
+      - name: Create portable ZIP
+        shell: pwsh
+        run: |
+          New-Item 'dist/Simple PDF reader/portable.flag' -ItemType File
+          Compress-Archive -Path 'dist/Simple PDF reader' -DestinationPath 'dist/Simple-PDF-reader-Portable.zip'
+      - name: Build single-file portable EXE
+        shell: pwsh
+        run: python -m PyInstaller --noconfirm --windowed --onefile --name "Simple PDF reader Portable" --collect-all pypdfium2 --collect-all reportlab --collect-all keyring --collect-all jaraco --add-data "dist/Simple PDF reader/portable.flag;." --add-data "LICENSE;." --add-data "THIRD_PARTY_NOTICES.md;." --add-data "dist/Simple PDF reader/third-party-licenses;third-party-licenses" app.py
       - uses: actions/upload-artifact@v4
         with:
           name: Simple-PDF-reader-Windows
