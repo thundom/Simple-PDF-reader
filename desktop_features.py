@@ -59,12 +59,12 @@ class DesktopFeatures:
             self.bind(shortcut,lambda e,f=action:self.guard(f))
 
     def build_menus(self):
-        main=tk.Menu(self,tearoff=False); self.configure(menu=main); self.menu_icons=[]
+        main=tk.Menu(self,tearoff=False); self.configure(menu=main); self.menu_icons=[]; self.menu_pictures={}
         def menu(label):
             result=tk.Menu(main,tearoff=False); main.add_cascade(label=tr(label),menu=result); return result
         def command(parent,label,action,key='single',shortcut=''):
             from ui import icon
-            picture=icon(self,key,'#263447'); self.menu_icons.append(picture)
+            picture=icon(self,key,'#263447'); self.menu_icons.append(picture); self.menu_pictures[key]=picture
             parent.add_command(label=tr(label),image=picture,compound='left',accelerator=shortcut,command=lambda:self.guard(action))
         file=menu('文件')
         for label,action,key,shortcut in [('打开 PDF',self.open,'open','Ctrl+O'),('重新打开上次文件',self.reopen,'recent',''),('创建 PDF',self.convert,'create',''),('合并文件',self.merge,'merge',''),('保存副本',self.save,'save','Ctrl+S'),('导出 PDF',self.export_menu,'export',''),('关闭文件',self.close_document,'close','Ctrl+W'),('文档属性',self.properties,'properties','Ctrl+D'),('打印',self.print_pdf,'print','Ctrl+P')]: command(file,label,action,key,shortcut)
@@ -166,7 +166,7 @@ class DesktopFeatures:
         if not self.doc: return
         menu=tk.Menu(self,tearoff=False)
         for label,key,action in [('上一页','previous',lambda:self.navigate(-1)),('下一页','next',lambda:self.navigate(1)),('添加文字','text',lambda:self.set_mode('text')),('区域高亮','highlight',lambda:self.set_mode('highlight')),('注释','comment',lambda:self.set_mode('comment')),('填写和签名','signature',self.signature),('编辑工具','edit',lambda:self.edit_toolbar(event)),('文档属性','properties',self.properties)]:
-            menu.add_command(label=tr(label),image=self.get_icon(key),compound='left',command=lambda f=action:self.guard(f))
+            menu.add_command(label=tr(label),image=self.menu_pictures[key],compound='left',command=lambda f=action:self.guard(f))
         try: menu.tk_popup(event.x_root,event.y_root)
         finally: menu.grab_release()
 
