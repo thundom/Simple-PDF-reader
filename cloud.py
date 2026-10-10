@@ -3,6 +3,8 @@ import base64
 import hashlib
 import json
 import secrets
+from pathlib import Path
+import sys
 import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -10,6 +12,7 @@ from urllib.parse import urlencode, urlparse, parse_qs, quote
 import keyring
 import requests
 from library import DATA_DIR
+from i18n import tr
 
 PROVIDERS = {
     'Google Drive': {
@@ -17,11 +20,7 @@ PROVIDERS = {
         'token':'https://oauth2.googleapis.com/token',
         'scope':'https://www.googleapis.com/auth/drive.appdata',
     },
-    'OneDrive': {
-        'authorize':'https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize',
-        'token':'https://login.microsoftonline.com/consumers/oauth2/v2.0/token',
-        'scope':'offline_access Files.ReadWrite.AppFolder',
-    },
+
 }
 SERVICE = 'Simple PDF reader OAuth'
 
@@ -35,6 +34,13 @@ class Cloud:
         try: self.config = json.loads(self.config_path.read_text('utf-8'))
         except (FileNotFoundError, ValueError): self.config = {}
         self.client = self.config.get(provider,{})
+        directories = [Path(sys.executable).parent,Path(getattr(sys,'_MEIPASS',Path(__file__).parent)),Path(__file__).parent]
+        for directory in directories:
+            file = directory/'oauth-clients.json'
+            if file.is_file():
+                values = json.loads(file.read_text('utf-8')).get(provider,{})
+                if values.get('client_id'): self.client = values
+                break
         stored = keyring.get_password(SERVICE, provider)
         self.tokens = json.loads(stored) if stored else {}
 
@@ -47,7 +53,7 @@ class Cloud:
         if client_secret: keyring.set_password(SERVICE,self.provider+' client',client_secret)
 
     def _secret(self):
-        value = keyring.get_password(SERVICE,self.provider+' client')
+        value = self.client.get('client_secret') or keyring.get_password(SERVICE,self.provider+' client')
         return {'client_secret':value} if value and self.provider=='Google Drive' else {}
 
     def _store(self, value):
@@ -58,7 +64,7 @@ class Cloud:
         keyring.set_password(SERVICE,self.provider,json.dumps(value))
 
     def login(self):
-        if not self.client.get('client_id'): raise ValueError('请先配置 OAuth Client ID，参见 CLOUD_SETUP.md')
+        if not self.client.get('client_id'): raise ValueError('此版本的开发者尚未完成云盘网页登录注册。完成注册并更新程序后即可点击登录，无需用户输入 ID。')
         verifier = secrets.token_urlsafe(48)
         challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip('=')
         state = secrets.token_urlsafe(32)
@@ -73,9 +79,8 @@ class Cloud:
                 self.send_response(200 if valid else 400)
                 self.send_header('Content-Type','text/plain; charset=utf-8')
                 self.end_headers()
-                self.wfile.write(('登录完成，可以关闭此页面。' if valid else '无效的登录回调').encode())
+                self.wfile.write(tr('登录完成，可以关闭此页面。' if valid else '无效的登录回调').encode())
             def log_message(self,*args): pass
-        # Microsoft public native apps must register http://localhost (port ignored).
         with HTTPServer(('127.0.0.1',0),Callback) as server:
             server.timeout = 1
             redirect = f'http://localhost:{server.server_port}/callback'
@@ -98,7 +103,7 @@ class Cloud:
     def _check(self,response):
         if not response.ok:
             # Do not expose request headers, tokens or authorization codes in UI.
-            raise ValueError(f'云盘请求失败（HTTP {response.status_code}）；检查应用配置、权限和网络')
+            raise ValueError(tr('云盘请求失败（HTTP {0}）；检查应用配置、权限和网络').format(response.status_code))
 
     def _request(self,method,url,**kwargs):
         if not self.tokens: raise ValueError('请先登录云盘')
@@ -119,48 +124,33 @@ class Cloud:
 
     def books(self):
         items = []
-        if self.provider=='Google Drive':
-            params = {'spaces':'appDataFolder','q':"trashed = false and mimeType = 'application/zip'",
-                'fields':'nextPageToken,files(id,name,modifiedTime,description)','pageSize':100}
-            while True:
-                value = self._request('GET','https://www.googleapis.com/drive/v3/files',params=params).json()
-                items += [{'id':v['id'],'name':v.get('description') or v['name'],'key':v['name'],'modified':v.get('modifiedTime','')} for v in value.get('files',[])]
-                if not value.get('nextPageToken'): break
-                params['pageToken'] = value['nextPageToken']
-        else:
-            url = 'https://graph.microsoft.com/v1.0/me/drive/special/approot/children'
-            while url:
-                value = self._request('GET',url).json()
-                items += [{'id':v['id'],'name':v['name'],'key':v['name'],'modified':v.get('lastModifiedDateTime','')} for v in value.get('value',[]) if v['name'].endswith('.spr.zip')]
-                url = value.get('@odata.nextLink')
-                if url and not url.startswith('https://graph.microsoft.com/'): raise ValueError('无效的云盘分页地址')
+        params = {'spaces':'appDataFolder','q':"trashed = false and mimeType = 'application/zip'",
+            'fields':'nextPageToken,files(id,name,modifiedTime,description)','pageSize':100}
+        while True:
+            value = self._request('GET','https://www.googleapis.com/drive/v3/files',params=params).json()
+            items += [{'id':v['id'],'name':v.get('description') or v['name'],'key':v['name'],'modified':v.get('modifiedTime','')} for v in value.get('files',[])]
+            if not value.get('nextPageToken'): break
+            params['pageToken'] = value['nextPageToken']
         return sorted(items,key=lambda v:v['modified'],reverse=True)
 
     def upload(self,key,name,data):
         if len(data)>200*1024*1024: raise ValueError('单次同步限制 200 MB，请拆分大文件')
-        if self.provider=='Google Drive':
-            filename = key+'.spr.zip'
-            existing = next((b for b in self.books() if b['key']==filename),None)
-            metadata = {'name':filename,'description':name}
-            if not existing: metadata['parents'] = ['appDataFolder']
-            boundary = 'spr-'+secrets.token_hex(16)
-            body = (f'--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'.encode()+json.dumps(metadata).encode()+
-                f'\r\n--{boundary}\r\nContent-Type: application/zip\r\n\r\n'.encode()+data+f'\r\n--{boundary}--\r\n'.encode())
-            url = 'https://www.googleapis.com/upload/drive/v3/files'+('/'+existing['id'] if existing else '')
-            self._upload_multipart(url,existing,boundary,body)
-        else:
-            filename = quote(name[:-4][:120]+'--'+key+'.spr.zip',safe='')
-            self._request('PUT','https://graph.microsoft.com/v1.0/me/drive/special/approot:/'+filename+':/content',data=data)
+        filename = key+'.spr.zip'
+        existing = next((b for b in self.books() if b['key']==filename),None)
+        metadata = {'name':filename,'description':name}
+        if not existing: metadata['parents'] = ['appDataFolder']
+        boundary = 'spr-'+secrets.token_hex(16)
+        body = (f'--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'.encode()+json.dumps(metadata).encode()+
+            f'\r\n--{boundary}\r\nContent-Type: application/zip\r\n\r\n'.encode()+data+f'\r\n--{boundary}--\r\n'.encode())
+        url = 'https://www.googleapis.com/upload/drive/v3/files'+('/'+existing['id'] if existing else '')
+        self._upload_multipart(url,existing,boundary,body)
 
     def _upload_multipart(self,url,existing,boundary,body):
         self._request('PATCH' if existing else 'POST',url,params={'uploadType':'multipart'},data=body,
             content_type='multipart/related; boundary='+boundary)
 
     def download(self,item):
-        if self.provider=='Google Drive':
-            return self._request('GET','https://www.googleapis.com/drive/v3/files/'+quote(item['id'],safe=''),params={'alt':'media'}).content
-        # Graph's /content redirect is handled by requests, which strips Authorization cross-host.
-        return self._request('GET','https://graph.microsoft.com/v1.0/me/drive/items/'+quote(item['id'],safe='')+'/content').content
+        return self._request('GET','https://www.googleapis.com/drive/v3/files/'+quote(item['id'],safe=''),params={'alt':'media'}).content
 
     def logout(self):
         if keyring.get_password(SERVICE,self.provider): keyring.delete_password(SERVICE,self.provider)

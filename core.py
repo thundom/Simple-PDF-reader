@@ -8,14 +8,16 @@ import tempfile
 
 from PIL import Image, ImageOps
 from pypdf import PdfReader, PdfWriter
-from pypdf.annotations import Highlight
+from pypdf.annotations import Highlight, Text
 from pypdf.generic import ArrayObject, FloatObject
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+from reportlab.lib.utils import ImageReader
 import pypdfium2 as pdfium
 
 pdfmetrics.registerFont(UnicodeCIDFont('STSong-Light'))
+pdfmetrics.registerFont(UnicodeCIDFont('HeiseiMin-W3'))
 
 
 class PasswordRequired(ValueError):
@@ -69,6 +71,25 @@ class Document:
                 bitmap.close()
                 page.close()
 
+    def page_sizes(self):
+        with pdfium.PdfDocument(self.data()) as pdf:
+            sizes = []
+            for i in range(len(pdf)):
+                page = pdf[i]
+                sizes.append(page.get_size())
+                page.close()
+            return sizes
+
+    def split(self, directory, groups):
+        directory = Path(directory)
+        if not groups or any(not group or any(i<0 or i>=len(self) for i in group) for group in groups):
+            raise ValueError('分割页码无效')
+        targets = [directory/f'{self.path.stem}-part-{i+1:03}.pdf' for i in range(len(groups))]
+        if any(path.exists() for path in targets):
+            raise ValueError('目标目录已有同名分割文件，请选择另一个目录')
+        for path,group in zip(targets,groups): self.save(path,indices=group)
+        return targets
+
     def rotate(self, index):
         self.checkpoint()
         self.writer.pages[index].rotate(90)
@@ -84,14 +105,14 @@ class Document:
         self.checkpoint()
         self.writer.append(reader)
 
-    def add_text(self, index, text, x, y, size=14):
+    def add_text(self, index, text, x, y, size=14,font='STSong-Light'):
         page = self.writer.pages[index]
         self.checkpoint()
         page.transfer_rotation_to_content()
         w, h = float(page.mediabox.width), float(page.mediabox.height)
         stream = BytesIO()
         c = canvas.Canvas(stream, pagesize=(w, h))
-        c.setFont('STSong-Light', size)
+        c.setFont(font, size)
         c.drawString(x, y, text)
         c.save()
         page.merge_page(PdfReader(stream).pages[0])
@@ -101,6 +122,23 @@ class Document:
         x1, y1, x2, y2 = rect
         points = ArrayObject([FloatObject(v) for v in (x1,y2,x2,y2,x1,y1,x2,y1)])
         self.writer.add_annotation(index, Highlight(rect=rect, quad_points=points))
+
+    def comment(self,index,text,x,y):
+        self.checkpoint()
+        self.writer.add_annotation(index,Text(rect=(x,y,x+22,y+22),text=text,open=False))
+
+    def add_image(self,index,image,x,y,width,height):
+        self.checkpoint()
+        page=self.writer.pages[index]
+        stream=BytesIO()
+        c=canvas.Canvas(stream,pagesize=(float(page.mediabox.width),float(page.mediabox.height)))
+        c.drawImage(ImageReader(image),x,y,width=width,height=height,mask='auto')
+        c.save()
+        page.merge_page(PdfReader(stream).pages[0])
+
+    def fill_form(self,values):
+        self.checkpoint()
+        self.writer.update_page_form_field_values(None,values,auto_regenerate=False)
 
     def save(self, path, password=None, indices=None):
         writer = PdfWriter(clone_from=BytesIO(self.data()))

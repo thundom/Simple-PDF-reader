@@ -7,7 +7,10 @@ from pathlib import Path
 import tempfile
 import zipfile
 
-DATA_DIR = Path(os.environ.get('LOCALAPPDATA', Path.home()/'.local/share'))/'Simple PDF reader'
+import sys
+APP_DIR = Path(sys.executable).parent if getattr(sys,'frozen',False) else Path(__file__).parent
+PORTABLE=(APP_DIR/'portable.flag').exists() or (Path(getattr(sys,'_MEIPASS',APP_DIR))/'portable.flag').exists() or (getattr(sys,'frozen',False) and 'Portable' in Path(sys.executable).stem)
+DATA_DIR = APP_DIR/'Data' if PORTABLE else Path(os.environ.get('LOCALAPPDATA', Path.home()/'.local/share'))/'Simple PDF reader'
 
 
 def digest(data):
@@ -24,10 +27,10 @@ class Library:
         except (FileNotFoundError, ValueError):
             self.books = {}
 
-    def remember(self, path, page, zoom):
+    def remember(self, path, page, zoom, view='单页', offset=0):
         path = Path(path)
         key = digest(path.read_bytes())
-        self.books[key] = {'name': path.name, 'path': str(path.resolve()), 'page': page, 'zoom': zoom}
+        self.books[key] = {'name': path.name, 'path': str(path.resolve()), 'page': page, 'zoom': zoom, 'view':view, 'offset':offset}
         fd, temporary = tempfile.mkstemp(dir=self.directory, suffix='.json')
         with os.fdopen(fd, 'w', encoding='utf-8') as out:
             json.dump(self.books, out, ensure_ascii=False, indent=2)
@@ -38,12 +41,12 @@ class Library:
         return self.books.get(digest(Path(path).read_bytes()), {})
 
 
-def make_bundle(path, page, zoom):
+def make_bundle(path, page, zoom, view='单页', offset=0):
     from io import BytesIO
     path = Path(path)
     data = path.read_bytes()
     key = digest(data)
-    manifest = {'version':1, 'name':path.name, 'sha256':key, 'page':page, 'zoom':zoom}
+    manifest = {'version':1, 'name':path.name, 'sha256':key, 'page':page, 'zoom':zoom, 'view':view, 'offset':offset}
     output = BytesIO()
     with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as archive:
         archive.writestr('book.pdf', data)
@@ -72,8 +75,12 @@ def restore_bundle(data, directory):
     page = int(manifest['page'])
     zoom = float(manifest['zoom'])
     if page < 0 or not .3 <= zoom <= 2.5: raise ValueError('进度数据无效')
+    view = manifest.get('view','单页')
+    offset = float(manifest.get('offset',0))
+    if view not in {'单页','双页','连续滚动','双页连续'} or not 0<=offset<=1:
+        raise ValueError('阅读布局数据无效')
     directory = Path(directory)/manifest['sha256']
     directory.mkdir(parents=True,exist_ok=True)
     target = directory/name
     target.write_bytes(pdf)
-    return target, {'page':page,'zoom':zoom}
+    return target, {'page':page,'zoom':zoom,'view':view,'offset':offset}

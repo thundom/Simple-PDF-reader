@@ -15,3 +15,5 @@ Simple PDF reader source code is MIT licensed. Dependencies are separately licen
 | PyInstaller (build tool) | GPL with distribution exception | https://pyinstaller.org/en/stable/license.html |
 
 Binary builds include the dependency license files collected by `collect_licenses.py` and bundled component resources. Transitive dependencies retain their own licenses. LibreOffice is an optional separately installed program (MPL-2.0 and other component licenses); it is not bundled or relicensed by this project.
+
+HTML distribution embeds PDF.js 5.4.296 (Apache-2.0) and pdf-lib 1.17.1 (MIT). Full license texts are included in its About dialog. Optional Tesseract OCR (Apache-2.0) is installed separately.

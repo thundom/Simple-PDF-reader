@@ -1,7 +1,7 @@
 [Setup]
 AppId=SimplePDFreader.thundom
 AppName=Simple PDF reader
-AppVersion=0.1.0
+AppVersion=0.3.0
 AppPublisher=thundom
 DefaultDirName={localappdata}\Programs\Simple PDF reader
 DefaultGroupName=Simple PDF reader
@@ -15,7 +15,7 @@ LicenseFile=LICENSE
 UninstallDisplayIcon={app}\Simple PDF reader.exe
 
 [Files]
-Source: "dist\Simple PDF reader\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist\Simple PDF reader\*"; DestDir: "{app}"; Excludes: "portable.flag"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "README.md"; DestDir: "{app}"
 Source: "CLOUD_SETUP.md"; DestDir: "{app}"
 Source: "LICENSE"; DestDir: "{app}"
