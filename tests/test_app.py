@@ -77,12 +77,12 @@ class PDFTests(unittest.TestCase):
         key,data = make_bundle(self.source,1,1.4)
         path,state = restore_bundle(data,self.root/'fresh-system')
         self.assertEqual(path.read_bytes(),self.source.read_bytes())
-        self.assertEqual(state,{'page':1,'zoom':1.4})
+        self.assertEqual(state,{'page':1,'zoom':1.4,'view':'单页','offset':0})
         self.assertEqual(len(key),64)
 
-    def test_google_and_onedrive_upload_protocol(self):
+    def test_google_upload_protocol(self):
         from cloud import Cloud
-        for provider in ['Google Drive','OneDrive']:
+        for provider in ['Google Drive']:
             cloud = Cloud.__new__(Cloud)
             cloud.provider = provider
             with patch.object(cloud,'_request') as request, patch.object(cloud,'books',return_value=[]):
@@ -104,18 +104,37 @@ class PDFTests(unittest.TestCase):
     def test_refresh_token_and_authorization_header(self):
         from cloud import Cloud,PROVIDERS
         cloud = Cloud.__new__(Cloud)
-        cloud.provider = 'OneDrive'
-        cloud.settings = PROVIDERS['OneDrive']
+        cloud.provider = 'Google Drive'
+        cloud.settings = PROVIDERS['Google Drive']
         cloud.client = {'client_id':'test-client'}
         cloud.tokens = {'refresh_token':'test-refresh','expires_at':0}
         from unittest.mock import Mock
         response = Mock(ok=True)
         response.json.return_value = {'access_token':'test-access','expires_in':3600}
         with patch('cloud.requests.post',return_value=response) as post, patch('cloud.requests.request',return_value=response) as request, patch('cloud.keyring.get_password',return_value=None),patch('cloud.keyring.set_password'):
-            cloud._request('GET','https://graph.microsoft.com/v1.0/me/drive/special/approot/children')
+            cloud._request('GET','https://www.googleapis.com/drive/v3/files')
             self.assertEqual(post.call_args.kwargs['data']['grant_type'],'refresh_token')
             self.assertEqual(request.call_args.kwargs['headers']['Authorization'],'Bearer test-access')
             self.assertEqual(cloud.tokens['refresh_token'],'test-refresh')
+
+    def test_split_preserves_pages_and_source(self):
+        document = Document(self.source)
+        original = self.source.read_bytes()
+        results = document.split(self.root,[[0],[1]])
+        self.assertEqual(len(results),2)
+        self.assertIn('First page',PdfReader(results[0]).pages[0].extract_text())
+        self.assertIn('Second page',PdfReader(results[1]).pages[0].extract_text())
+        self.assertEqual(self.source.read_bytes(),original)
+        with self.assertRaises(ValueError): document.split(self.root,[[0],[1]])
+
+    def test_continuous_progress_bundle(self):
+        key,data = make_bundle(self.source,1,.75,'双页连续',.42)
+        path,state = restore_bundle(data,self.root/'restored')
+        self.assertEqual(state['view'],'双页连续')
+        self.assertEqual(state['offset'],.42)
+        sizes = Document(self.source).page_sizes()
+        self.assertEqual(len(sizes),2)
+        self.assertGreater(sizes[0][1],sizes[0][0])
 
 
 if __name__=='__main__': unittest.main()
