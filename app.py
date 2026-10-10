@@ -12,7 +12,9 @@ from ui import icon, Tooltip
 from core import Document, PasswordRequired, convert_to_pdf
 from library import Library, make_bundle, restore_bundle
 
-class App(tk.Tk):
+from desktop_features import DesktopFeatures
+
+class App(DesktopFeatures, tk.Tk):
 
     def __init__(self):
         super().__init__()
@@ -22,7 +24,8 @@ class App(tk.Tk):
         self.configure(bg='#f6f7f9')
         self.doc, self.page, self.scale, self.mode = (None, 0, 1.0, None)
         self.photo = None
-        self.view = tk.StringVar(value='连续滚动')
+        self.preferences = self.load_preferences()
+        self.view = tk.StringVar(value=self.preferences.get('layout', '连续滚动'))
         self.fit_width = False
         self.images = {}
         self.positions = {}
@@ -42,6 +45,7 @@ class App(tk.Tk):
         self.bind('<Control-f>', lambda e: self.guard(self.search))
         self.bind('<Right>', lambda e: self.guard(lambda: self.navigate(1)))
         self.bind('<Left>', lambda e: self.guard(lambda: self.navigate(-1)))
+        self.install_shortcuts()
         self.protocol('WM_DELETE_WINDOW', self.close)
         if len(sys.argv) > 1:
             self.after(100, lambda: self.guard(lambda: self.open(sys.argv[1])))
@@ -54,6 +58,7 @@ class App(tk.Tk):
         style.configure('Accent.TButton', background='#df3033', foreground='white')
         style.map('Accent.TButton', background=[('active', '#be2327')])
         style.configure('TFrame', background='#f6f7f9')
+        self.build_menus()
         header = tk.Frame(self, bg='#ffffff', height=58)
         header.pack(fill='x')
         tk.Label(header, text=tr('▣'), font=('Segoe UI', 24, 'bold'), fg='#df3033', bg='white').pack(side='left', padx=(22, 8))
@@ -62,8 +67,11 @@ class App(tk.Tk):
         bar = tk.Frame(self, bg='#333840', padx=12, pady=7)
         bar.pack(fill='x')
         self.icon_cache = {}
+        self.toolbar_items = []
         for label, key, action, shortcut in [('打开 PDF', 'open', self.open, 'Ctrl+O'), ('保存副本', 'save', self.save, 'Ctrl+S'), ('最近阅读', 'recent', self.recent, ''), ('云端书库', 'cloud', self.cloud_window, ''), ('打印', 'print', self.print_pdf, 'Ctrl+P'), ('查找文字', 'search', self.search, 'Ctrl+F')]:
-            self.tool_button(bar, label, key, action, shortcut=shortcut).pack(side='left', padx=3)
+            button = self.tool_button(bar, label, key, action, shortcut=shortcut)
+            self.toolbar_items.append((label, button))
+            if label not in self.preferences.get('hidden_tools', []): button.pack(side='left', padx=3)
         languages = tk.Menubutton(bar, text=tr('English / 中文 / 日本語 ▾'), bg='#333840', fg='white', activebackground='#48515e', activeforeground='white', relief='flat', padx=12)
         languages.pack(side='right')
         menu = tk.Menu(languages, tearoff=False)
@@ -75,6 +83,13 @@ class App(tk.Tk):
         reading.pack(fill='x')
         for label, key, action in [('上一页', 'previous', lambda: self.navigate(-1)), ('下一页', 'next', lambda: self.navigate(1)), ('缩小', 'minus', lambda: self.zoom(-0.15)), ('放大', 'plus', lambda: self.zoom(0.15)), ('适应宽度', 'fit', self.fit)]:
             self.tool_button(reading, label, key, action).pack(side='left', padx=2)
+        for label, key, action in [('主页', 'home', self.show_home), ('跳转页面', 'goto', self.go_to_page), ('页面导航', 'sidebar', lambda:self.toggle_panel('left')), ('工具', 'tools', lambda:self.toggle_panel('right'))]:
+            self.tool_button(reading,label,key,action).pack(side='left',padx=2)
+        self.page_entry = tk.StringVar()
+        entry = ttk.Entry(reading,textvariable=self.page_entry,width=5)
+        entry.pack(side='left',padx=6)
+        entry.bind('<Return>',lambda e:self.guard(lambda:self.go_to_page(from_entry=True)))
+        Tooltip(entry,tr('输入页码后按 Enter'))
         self.page_label = tk.StringVar(value=tr('未打开文件'))
         tk.Label(reading, textvariable=self.page_label, bg='#333840', fg='white', font=('Segoe UI', 10)).pack(side='left', padx=14)
         self.layout_button = tk.Menubutton(reading, text=tr(tr(self.view.get()) + ' ▾'), bg='#333840', fg='white', activebackground='#48515e', activeforeground='white', padx=12)
@@ -87,19 +102,23 @@ class App(tk.Tk):
         Tooltip(self.layout_button, tr('页面显示'))
         body = ttk.Frame(self)
         body.pack(fill='both', expand=True)
+        self.body = body
         sidebar = tk.Frame(body, bg='#fff', width=190)
         sidebar.pack(side='left', fill='y')
         tk.Label(sidebar, text=tr('页面导航'), font=('Segoe UI', 12, 'bold'), bg='white').pack(pady=15)
         self.pages = tk.Listbox(sidebar, width=22, borderwidth=0, highlightthickness=0, selectbackground='#e0ecff', selectforeground='#1768c5', font=('Segoe UI', 11))
         self.pages.pack(fill='both', expand=True, padx=10, pady=5)
         self.pages.bind('<<ListboxSelect>>', self.select_page)
+        self.left_panel = sidebar
         tools = tk.Frame(body, bg='#343941', width=200)
         tools.pack(side='right', fill='y')
         tk.Label(tools, text=tr('工具'), bg='#343941', fg='white', font=('Segoe UI', 13, 'bold')).pack(anchor='w', padx=18, pady=16)
-        for label, key, action in [('创建 PDF', 'open', self.convert), ('合并文件', 'double', self.merge), ('编辑工具', 'edit', self.edit_toolbar), ('填写和签名', 'edit', self.signature), ('导出 PDF', 'save', self.export_menu), ('组织页面', 'split', self.edit_toolbar), ('注释', 'text', lambda: self.set_mode('comment')), ('区域高亮', 'highlight', lambda: self.set_mode('highlight')), ('扫描和 OCR', 'search', self.ocr), ('保护', 'lock', self.encrypt), ('请求电子签名', 'edit', self.collaboration), ('发送以供注释', 'cloud', self.collaboration), ('更多工具', 'single', self.edit_toolbar), ('关联 PDF', 'single', self.default_app)]:
+        for label, key, action in [('创建 PDF', 'create', self.convert), ('合并文件', 'merge', self.merge), ('编辑工具', 'edit', self.edit_toolbar), ('填写和签名', 'signature', self.signature), ('导出 PDF', 'export', self.export_menu), ('组织页面', 'organize', self.edit_toolbar), ('注释', 'comment', lambda: self.set_mode('comment')), ('区域高亮', 'highlight', lambda: self.set_mode('highlight')), ('扫描和 OCR', 'ocr', self.ocr), ('保护', 'lock', self.encrypt), ('请求电子签名', 'signature', self.collaboration), ('发送以供注释', 'cloud', self.collaboration), ('更多工具', 'tools', self.edit_toolbar), ('关联 PDF', 'link', self.default_app)]:
             self.tool_button(tools, label, key, action, show_text=True).pack(fill='x', padx=8, pady=2)
+        self.right_panel = tools
         center = ttk.Frame(body)
         center.pack(fill='both', expand=True)
+        self.center = center
         self.canvas = tk.Canvas(center, bg='#555b63', highlightthickness=0)
         ys = ttk.Scrollbar(center, orient='vertical', command=self.scroll)
         xs = ttk.Scrollbar(center, orient='horizontal', command=self.canvas.xview)
@@ -109,9 +128,12 @@ class App(tk.Tk):
         self.canvas.pack(fill='both', expand=True)
         self.canvas.bind('<Button-1>', self.click)
         self.canvas.bind('<MouseWheel>', self.wheel)
-        self.canvas.bind('<Button-3>', lambda e: self.guard(lambda: self.edit_toolbar(e)))
+        self.canvas.bind('<Button-3>', self.context_menu)
         self.canvas.bind('<Configure>', self.resized)
         self.canvas.create_text(340, 230, text=tr('打开 PDF 开始阅读\n\n支持密码文件、页面编辑与本地转换'), font=('Segoe UI', 18), fill='#56677e', justify='center')
+        if self.preferences.get('left_collapsed'): self.left_panel.pack_forget()
+        if self.preferences.get('right_collapsed'): self.right_panel.pack_forget()
+        self.show_home()
         self.status = tk.StringVar(value=tr('就绪 · 文件不会上传到服务器'))
         tk.Label(self, textvariable=self.status, anchor='w', bg='#f6f7f9', fg='#526176', padx=14, pady=8).pack(fill='x')
 
@@ -140,7 +162,7 @@ class App(tk.Tk):
 
     def about(self):
         directory=Path(getattr(sys,'_MEIPASS',Path(__file__).parent))
-        window=tk.Toplevel(self); window.title('Simple PDF reader · 0.3.0 · MIT')
+        window=tk.Toplevel(self); window.title('Simple PDF reader · 0.4.0 · MIT')
         box=tk.Text(window,width=95,height=28,wrap='word'); box.pack(fill='both',expand=True)
         for name in ['LICENSE','THIRD_PARTY_NOTICES.md']:
             file=directory/name
@@ -304,7 +326,7 @@ class App(tk.Tk):
             def activate(f=action):
                 self.hide_toolbar()
                 self.guard(f)
-            key={'添加文字':'text','区域高亮':'highlight','旋转页面':'rotate','删除页面':'delete','撤销':'undo','填写和签名':'edit','注释':'text','加密 PDF':'lock','分割 PDF':'split','查找文字':'search'}.get(label,'single')
+            key={'添加文字':'text','区域高亮':'highlight','旋转页面':'rotate','删除页面':'delete','撤销':'undo','填写和签名':'signature','注释':'comment','加密 PDF':'lock','分割 PDF':'split','查找文字':'search','合并文件':'merge','提取页面':'extract','解密另存':'unlock','导出 PNG':'export'}.get(label,'single')
             cache='popup-'+key
             if cache not in self.icon_cache: self.icon_cache[cache]=icon(self,key,'#263447')
             button=ttk.Button(grid, text=tr(label),image=self.icon_cache[cache],compound='left',command=activate, width=17)
@@ -388,9 +410,11 @@ class App(tk.Tk):
         self.doc, self.page, self.mode = (document, min(state.get('page', 0), len(document) - 1), None)
         self.scale = state.get('zoom', 1.0)
         self.fit_width = not bool(state)
-        self.view.set(state.get('view', '连续滚动'))
+        self.view.set(state.get('view', self.preferences.get('layout','连续滚动')))
         self.sizes = self.doc.page_sizes()
+        self.hide_home()
         self.refresh(jump=True, offset=state.get('offset', 0))
+        self.remember()
 
     def remember(self):
         if self.doc and self.doc.path.exists():
@@ -526,6 +550,7 @@ class App(tk.Tk):
 
     def refresh(self, jump=False, offset=0):
         self.require()
+        self.hide_home()
         self.hide_toolbar()
         previous_offset = self.reading_offset() if not jump else offset
         self.page = min(self.page, len(self.doc) - 1)
@@ -570,6 +595,7 @@ class App(tk.Tk):
             self.canvas.yview_moveto(max(0, (target[1] + previous_offset * target[3] - 16) / self.content_height))
         self.render_visible()
         self.title(f"{self.doc.path.name}{(' *' if self.doc.dirty else '')} — Simple PDF reader")
+        self.page_entry.set(str(self.page + 1))
         self.page_label.set(tr('{0} / {1} 页  ·  {2:.0%}').format(self.page + 1, len(self.doc), self.scale))
         self.status.set(tr('{0}  ·  {1}  ·  {2}').format(self.doc.path.name, tr(self.view.get()), tr('有未保存修改') if self.doc.dirty else tr('阅读进度自动保存')))
 
@@ -599,6 +625,7 @@ class App(tk.Tk):
             self.page = new_page
             self.pages.selection_clear(0, 'end')
             self.pages.selection_set(self.page)
+            self.page_entry.set(str(self.page + 1))
             self.page_label.set(tr('{0} / {1} 页  ·  {2:.0%}').format(self.page + 1, len(self.doc), self.scale))
 
     def scroll(self, *args):
@@ -618,7 +645,7 @@ class App(tk.Tk):
         self.render_job = self.after(40, lambda: self.guard(self.render_visible))
 
     def resized(self, event):
-        if not self.doc:
+        if getattr(self,'home_frame',None) or not self.doc:
             return
         if self.resize_job:
             self.after_cancel(self.resize_job)

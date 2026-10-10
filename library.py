@@ -8,6 +8,7 @@ import tempfile
 import zipfile
 
 import sys
+import time
 APP_DIR = Path(sys.executable).parent if getattr(sys,'frozen',False) else Path(__file__).parent
 PORTABLE=(APP_DIR/'portable.flag').exists() or (Path(getattr(sys,'_MEIPASS',APP_DIR))/'portable.flag').exists() or (getattr(sys,'frozen',False) and 'Portable' in Path(sys.executable).stem)
 DATA_DIR = APP_DIR/'Data' if PORTABLE else Path(os.environ.get('LOCALAPPDATA', Path.home()/'.local/share'))/'Simple PDF reader'
@@ -30,7 +31,7 @@ class Library:
     def remember(self, path, page, zoom, view='单页', offset=0):
         path = Path(path)
         key = digest(path.read_bytes())
-        self.books[key] = {'name': path.name, 'path': str(path.resolve()), 'page': page, 'zoom': zoom, 'view':view, 'offset':offset}
+        self.books[key] = {'name': path.name, 'path': str(path.resolve()), 'page': page, 'zoom': zoom, 'view':view, 'offset':offset, 'updated':time.time()}
         fd, temporary = tempfile.mkstemp(dir=self.directory, suffix='.json')
         with os.fdopen(fd, 'w', encoding='utf-8') as out:
             json.dump(self.books, out, ensure_ascii=False, indent=2)

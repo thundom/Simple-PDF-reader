@@ -37,6 +37,7 @@ class Document:
     def __init__(self, path, password=''):
         self.path = Path(path)
         reader = read_pdf(path, password)
+        self.source_reader = reader
         self.writer = PdfWriter()
         self.writer.clone_document_from_reader(reader)
         self.dirty = False

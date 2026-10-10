@@ -1,7 +1,7 @@
 [Setup]
 AppId=SimplePDFreader.thundom
 AppName=Simple PDF reader
-AppVersion=0.3.0
+AppVersion=0.4.0
 AppPublisher=thundom
 DefaultDirName={localappdata}\Programs\Simple PDF reader
 DefaultGroupName=Simple PDF reader

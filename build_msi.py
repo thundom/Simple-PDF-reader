@@ -11,7 +11,7 @@ if not (source/'Simple PDF reader.exe').exists(): raise SystemExit('Build the ex
 output.parent.mkdir(parents=True,exist_ok=True)
 namespace = uuid.UUID('acda48f0-9029-47cc-9ff1-a05335187ce2')
 guid = lambda name: '{'+str(uuid.uuid5(namespace,name)).upper()+'}'
-db = msilib.init_database(str(output),schema,'Simple PDF reader',guid('Product-0.3.0'),'0.3.0','thundom')
+db = msilib.init_database(str(output),schema,'Simple PDF reader',guid('Product-0.4.0'),'0.4.0','thundom')
 summary = db.GetSummaryInformation(20)
 summary.SetProperty(msilib.PID_WORDCOUNT,10)
 summary.Persist()

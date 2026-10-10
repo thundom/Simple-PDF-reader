@@ -227,4 +227,97 @@ def choose(code):
     global language
     language=code
     DATA_DIR.mkdir(parents=True,exist_ok=True)
-    (DATA_DIR/'preferences.json').write_text(json.dumps({'language':code}),encoding='utf-8')
+    path=DATA_DIR/'preferences.json'
+    try: settings=json.loads(path.read_text('utf-8'))
+    except (OSError,ValueError): settings={}
+    settings['language']=code
+    path.write_text(json.dumps(settings),encoding='utf-8')
+
+rows(r"""
+文件|File|ファイル
+编辑|Edit|編集
+视图|View|表示
+签名|Sign|署名
+窗口|Window|ウィンドウ
+帮助|Help|ヘルプ
+主页|Home|ホーム
+跳转页面|Go to page|ページへ移動
+输入页码后按 Enter|Enter a page number, then press Enter|ページ番号を入力し Enter を押してください
+重新打开上次文件|Reopen last file|最後のファイルを再度開く
+关闭文件|Close document|文書を閉じる
+文档属性|Document properties|文書のプロパティ
+退出|Exit|終了
+添加图片|Add image|画像を追加
+首选项|Preferences|環境設定
+第一页|First page|最初のページ
+最后一页|Last page|最後のページ
+显示／隐藏页面导航|Show / hide navigation|ナビゲーションを表示／非表示
+显示／隐藏工具栏|Show / hide tools|ツールを表示／非表示
+自定义快捷工具栏|Customize quick tools|クイックツールをカスタマイズ
+全屏|Full screen|全画面表示
+最小化|Minimize|最小化
+快捷键|Keyboard shortcuts|キーボードショートカット
+退出全屏|Exit full screen|全画面表示を終了
+返回文档|Return to document|文書に戻る
+文件名|Filename|ファイル名
+页码|Page number|ページ番号
+上次阅读|Last read|最終閲覧
+位置|Location|場所
+文件已移动或删除，请重新打开。|The file was moved or deleted. Open it again.|ファイルが移動または削除されました。再度開いてください。
+移除记录|Remove from recent files|履歴から削除
+双击文件继续阅读；文件和进度保存在本机。|Double-click to resume. Files and progress are stored locally.|ダブルクリックで再開します。ファイルと読書位置はローカルに保存されます。
+点击页面放置图片|Click a page to place the image|ページをクリックして画像を配置
+常规|General|一般
+界面语言|Interface language|表示言語
+新文件默认页面显示|Default layout for new files|新しいファイルの既定レイアウト
+默认收起页面导航|Collapse navigation by default|ナビゲーションを既定で折りたたむ
+默认收起工具栏|Collapse tools by default|ツールを既定で折りたたむ
+快捷工具栏|Quick tools|クイックツール
+选择顶部快捷工具栏显示的功能|Choose actions shown in the top toolbar|上部ツールバーに表示する機能を選択
+高级|Advanced|詳細
+阅读进度每 5 秒及关闭文档时保存。|Progress is saved every 5 seconds and when closing a document.|読書位置は 5 秒ごとおよび文書を閉じる際に保存されます。
+数据目录|Data folder|データフォルダー
+本地密码不保存；云盘仅在主动操作时连接。|PDF passwords are not stored. Drive connects only when you request it.|PDF パスワードは保存されません。Drive は操作時のみ接続します。
+保存设置|Save preferences|設定を保存
+描述|Description|概要
+标题|Title|タイトル
+作者|Author|作成者
+主题|Subject|件名
+关键词|Keywords|キーワード
+文件大小|File size|ファイルサイズ
+页数|Page count|ページ数
+页面尺寸|Page size|ページサイズ
+源文件未加密|Source file is not encrypted|元ファイルは暗号化されていません
+源文件已加密|Source file is encrypted|元ファイルは暗号化されています
+安全处理程序|Security handler|セキュリティハンドラー
+密钥长度|Key length|キーの長さ
+允许打印|Printing allowed|印刷を許可
+允许修改|Modification allowed|変更を許可
+允许复制|Copying allowed|コピーを許可
+允许注释|Annotations allowed|注釈を許可
+允许填写表单|Form filling allowed|フォーム入力を許可
+辅助功能访问|Accessibility extraction allowed|アクセシビリティ抽出を許可
+允许页面组装|Document assembly allowed|文書アセンブリを許可
+允许高质量打印|High quality printing allowed|高品質印刷を許可
+此处显示源文件声明的权限，不代表程序已强制执行全部权限。|These are permissions declared by the source PDF. The app does not enforce all of them.|元 PDF が宣言する権限です。本アプリはすべての権限を強制するものではありません。
+编辑副本保存在内存中；普通另存为输出未加密文件，需用加密功能重新设置密码。|Edits are in memory. Normal Save a copy creates an unencrypted PDF; use Encrypt to protect the output.|編集はメモリ内で行われます。通常のコピー保存は暗号化されません。出力を保護するには暗号化を使用してください。
+安全性|Security|セキュリティ
+字体|Fonts|フォント
+字体名称|Font name|フォント名
+类型|Type|種類
+编码|Encoding|エンコーディング
+嵌入|Embedded|埋め込み
+是|Yes|はい
+否|No|いいえ
+自定义|Custom|カスタム
+自定义元数据（JSON 对象，键以 / 开头）|Custom metadata (JSON object, keys start with /)|カスタムメタデータ（JSON オブジェクト、キーは / で始まる）
+页面布局|Page layout|ページレイアウト
+页面模式|Page mode|ページモード
+标签结构|Tagged structure|タグ構造
+表单|Forms|フォーム
+查看器首选项|Viewer preferences|ビューアー設定
+当前页面旋转|Current page rotation|現在のページの回転
+修改未保存|Unsaved changes|未保存の変更
+元数据必须是键以 / 开头且值为字符串的 JSON 对象。|Metadata must be a JSON object with /-prefixed keys and string values.|メタデータは / で始まるキーと文字列値の JSON オブジェクトである必要があります。
+应用元数据修改|Apply metadata changes|メタデータ変更を適用
+""")
